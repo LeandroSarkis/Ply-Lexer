@@ -127,7 +127,7 @@ if __name__ == '__main__':
         int final = processar_dados(dados, 1.5);
 
         if (final == 0 || limite <= 100.0) {
-            printf("Resultado do processamento: %d\\n", final);
+            printf("Resultado do processamento: %d", final);
         }
 
         return 0;
