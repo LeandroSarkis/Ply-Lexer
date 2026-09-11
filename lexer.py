@@ -1,6 +1,5 @@
 import ply.lex as lex
 
-# 1. TODOS os tipos de tokens retornados pelas regras e pelo dicionario DEVEM estar nesta tupla
 tokens = (
     'TIPO_VARIAVEL',
     'RETORNO_FUNCAO',
@@ -12,33 +11,35 @@ tokens = (
     'DELIMITADOR',
     'PRE_PROCESSADOR',
     'BIBLIOTECA',
-    'STRING'
+    'STRING',
+    'P_WHILE',
+    'P_FOR',
+    'C_ELSE',
+    'C_IF',
 )
 
-# Mapeamento de palavras reservadas
 palavras_reservadas = {
     'int': 'TIPO_VARIAVEL',
     'float': 'TIPO_VARIAVEL',
     'double': 'TIPO_VARIAVEL',
     'return': 'RETORNO_FUNCAO',
-    'if': 'PALAVRA_RESERVADA',
-    'else': 'PALAVRA_RESERVADA',
-    'for': 'PALAVRA_RESERVADA',
-    'while': 'PALAVRA_RESERVADA',
+    'if': 'C_IF',
+    'else': 'C_ELSE',
+    'for': 'P_FOR',
+    'while': 'P_WHILE',
     'struct': 'PALAVRA_RESERVADA',
     'typedef': 'PALAVRA_RESERVADA'
 }
 
-# 2. Regras com prioridade alta (Comentários e Pré-processadores devem vir primeiro)
 
 def t_COMENTARIO_MULTILINHA(t):
     r'/\*(.|\n)*?\*/'
     t.lexer.lineno += t.value.count('\n')
-    pass # Ignora o comentario
+    pass 
 
 def t_COMENTARIO_LINHA(t):
     r'//.*'
-    pass # Ignora o comentario
+    pass
 
 def t_PRE_PROCESSADOR(t):
     r'\#(define|include)'
@@ -48,7 +49,6 @@ def t_BIBLIOTECA(t):
     r'<[a-zA-Z0-9_.]+\.h>'
     return t
 
-# 3. Operadores (Incluindo o operador ternario '?' e relacionais '<=', '>=')
 def t_OPERADOR(t):
     r'==|!=|<=|>=|&&|\|\||\+|\-|\*|/|=|<|>|\?'
     return t
@@ -62,7 +62,6 @@ def t_STRING(t):
     t.value = t.value[1:-1]
     return t
 
-# 4. Numeros (Flutuantes declarados antes de Inteiros)
 def t_CONSTANTE_FLUTUANTE(t):
     r'\d+\.\d+'
     t.value = float(t.value)
@@ -73,10 +72,8 @@ def t_CONSTANTE_INTEIRA(t):
     t.value = int(t.value)
     return t
 
-# 5. Identificadores (Corrigido o intervalo a-z e A-Z)
 def t_IDENTIFICADOR(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
-    # Retorna o tipo da palavra reservada caso exista, senao retorna 'IDENTIFICADOR'
     t.type = palavras_reservadas.get(t.value, 'IDENTIFICADOR')
     return t
 
@@ -92,7 +89,6 @@ def t_error(t):
 
 analisador = lex.lex()
 
-# --- EXECUCAO DO TESTE COMPLEXO ---
 if __name__ == '__main__':
     codigo_fonte = '''
     #include <stdio.h>
