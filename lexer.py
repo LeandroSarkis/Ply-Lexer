@@ -84,8 +84,8 @@ def t_quebra_linha(t):
 t_ignore = ' \t'
 
 def t_error(t):
-    print(f"Erro léxico: Caractere inválido '{t.value[0]}' na linha {t.lexer.lineno}")
-    t.lexer.skip(1)
+    mensagem_erro = f"Erro léxico: Caractere inválido '{t.value[0]}' na linha {t.lexer.lineno}"    
+    raise SyntaxError(mensagem_erro)
 
 analisador = lex.lex()
 
