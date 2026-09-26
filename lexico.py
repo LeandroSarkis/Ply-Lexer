@@ -35,7 +35,7 @@ palavras_reservadas = {
 def t_COMENTARIO_MULTILINHA(t):
     r'/\*(.|\n)*?\*/'
     t.lexer.lineno += t.value.count('\n')
-    pass 
+    pass
 
 def t_COMENTARIO_LINHA(t):
     r'//.*'
@@ -84,13 +84,14 @@ def t_quebra_linha(t):
 t_ignore = ' \t'
 
 def t_error(t):
-    mensagem_erro = f"Erro léxico: Caractere inválido '{t.value[0]}' na linha {t.lexer.lineno}"    
+    mensagem_erro = f"Erro léxico: Caractere inválido '{t.value[0]}' na linha {t.lexer.lineno}"
     raise SyntaxError(mensagem_erro)
 
 analisador = lex.lex()
 
-if __name__ == '__main__':
-    codigo_fonte = '''
+# Código de exemplo usado para demonstrar o lexer e reutilizado pelo
+# analisador sintático (sintatico.py) para a mesma finalidade.
+codigo_fonte = '''
     #include <stdio.h>
     #define MAX(a, b) ((a) > (b) ? (a) : (b))
     #define PI 3.14159
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     int processar_dados(int matriz[2][2], float fator) {
         int resultado = 0;
         int i, j;
-        
+
         for (i = 0; i < 2; i = i + 1) {
             for (j = 0; j < 2; j = j + 1) {
                 if (matriz[i][j] != 0) {
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     int main() {
         int dados[2][2] = {{10, 20}, {0, 40}};
         double limite = 99.95;
-        
+
         // Chamada de Macro e Funcoes
         int maior = MAX(10, 50);
         int final = processar_dados(dados, 1.5);
@@ -134,6 +135,7 @@ if __name__ == '__main__':
     }
     '''
 
+if __name__ == '__main__':
     analisador.input(codigo_fonte)
     print("--- TOKENS IDENTIFICADOS ---")
     for token in analisador:
