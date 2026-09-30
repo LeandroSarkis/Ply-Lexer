@@ -1,79 +1,7 @@
-"""
-Analisador Sintático (versão inicial) - Projeto do Primeiro Bimestre
-=====================================================================
-
-Este módulo implementa um parser LALR(1), usando PLY (ply.yacc), para o
-subconjunto de linguagem já tokenizado pelo analisador léxico em lexico.py.
-
-INTEGRAÇÃO COM O ANALISADOR LÉXICO
------------------------------------
-O lexer original (lexico.py) classifica todos os operadores aritméticos,
-relacionais, lógicos e de atribuição sob uma única classe de lexema
-'OPERADOR', e todos os símbolos de pontuação sob 'DELIMITADOR'. Isso é
-suficiente para a análise léxica, mas um parser LALR(1) precisa distinguir
-esses símbolos para aplicar precedência de operadores corretamente
-(ex.: '*' tem precedência maior que '+', '&&' é diferente de '==').
-
-Por isso, este módulo NÃO altera o lexico.py (o trabalho de vocês
-permanece intacto). Em vez disso, ele "envolve" (wrap) o lexer original
-com a classe EnvoltorioLexico, que reclassifica cada token OPERADOR/
-DELIMITADOR em um subtipo mais específico (ex.: '+' -> OP_SOMA,
-'(' -> ABRE_PARENTESES) de acordo com o lexema (t.value), antes de
-entregá-lo ao yacc. Essa é a "Cadeia de Tokens" que alimenta o parser.
-
-GRAMÁTICA LIVRE DE CONTEXTO (resumo em BNF)
---------------------------------------------
-programa            : lista_declaracoes
-
-declaracao_global    : diretiva_preprocessador
-                      | definicao_struct
-                      | definicao_funcao
-
-definicao_funcao     : TIPO IDENT ( lista_parametros ) bloco
-
-bloco                : { lista_comandos }
-
-comando              : declaracao_variavel ;
-                      | atribuicao ;
-                      | comando_if
-                      | comando_while
-                      | comando_for
-                      | RETURN expressao ;
-                      | chamada_funcao ;
-                      | bloco
-
-comando_if           : if ( expressao ) bloco
-                      | if ( expressao ) bloco else bloco
-
-comando_while        : while ( expressao ) bloco
-
-comando_for          : for ( for_init ; expressao ; atribuicao ) bloco
-
-expressao            : expressao_ou ? expressao : expressao      (ternário)
-                      | expressao_ou
-expressao_ou         : expressao_ou || expressao_e | expressao_e
-expressao_e          : expressao_e && expressao_rel | expressao_rel
-expressao_rel        : expressao_rel (==|!=|<|>|<=|>=) expr_add | expr_add
-expressao_add        : expressao_add (+|-) termo | termo
-termo                : termo (*|/) fator | fator
-fator                : ( expressao ) | CONST_INT | CONST_FLOAT | STRING
-                      | chamada_funcao | IDENT indices | -fator
-
-(gramática completa e comentada nas funções p_* abaixo)
-
-Cada regra p_* constrói um nó de AST como tupla Python, o que facilita
-tanto a impressão da árvore (ver imprimir_ast) quanto uma futura fase de
-análise semântica.
-"""
-
 import sys
 
 import ply.yacc as yacc
 from lexico import analisador as lexer_base, codigo_fonte
-
-# ---------------------------------------------------------------------------
-# 1. ENVOLTÓRIO DO LEXER: reclassifica OPERADOR/DELIMITADOR por subtipo
-# ---------------------------------------------------------------------------
 
 MAPA_OPERADORES = {
     '+': 'OP_SOMA', '-': 'OP_SUBTRACAO',
@@ -114,19 +42,11 @@ class EnvoltorioLexico:
             tok.type = MAPA_DELIMITADORES[tok.value]
         return tok
 
-
-# tokens usados pelo parser = tokens "de base" (sem OPERADOR/DELIMITADOR)
-# + os subtipos específicos criados acima.
 tokens = (
     'TIPO_VARIAVEL', 'RETORNO_FUNCAO', 'PALAVRA_RESERVADA', 'IDENTIFICADOR',
     'CONSTANTE_INTEIRA', 'CONSTANTE_FLUTUANTE', 'PRE_PROCESSADOR',
     'BIBLIOTECA', 'STRING', 'P_WHILE', 'P_FOR', 'C_ELSE', 'C_IF',
 ) + tuple(MAPA_OPERADORES.values()) + tuple(MAPA_DELIMITADORES.values())
-
-
-# ---------------------------------------------------------------------------
-# 2. PROGRAMA / DECLARAÇÕES GLOBAIS
-# ---------------------------------------------------------------------------
 
 def p_programa(p):
     'programa : lista_declaracoes'
@@ -149,8 +69,6 @@ def p_declaracao_global(p):
                           | definicao_funcao'''
     p[0] = p[1]
 
-
-# --- diretivas de pré-processador (#include, #define) ---
 
 def p_diretiva_include(p):
     'diretiva_preprocessador : PRE_PROCESSADOR BIBLIOTECA'
@@ -213,8 +131,6 @@ def p_campo(p):
     p[0] = ('campo', p[1], p[2])
 
 
-# --- funções (main é apenas mais uma função, sem tratamento especial) ---
-
 def p_definicao_funcao(p):
     ('definicao_funcao : TIPO_VARIAVEL IDENTIFICADOR ABRE_PARENTESES '
      'lista_parametros FECHA_PARENTESES bloco')
@@ -255,10 +171,6 @@ def p_dimensoes_vazia(p):
     'dimensoes : vazio'
     p[0] = []
 
-
-# ---------------------------------------------------------------------------
-# 3. BLOCOS E COMANDOS
-# ---------------------------------------------------------------------------
 
 def p_bloco(p):
     'bloco : ABRE_CHAVES lista_comandos FECHA_CHAVES'
@@ -302,8 +214,6 @@ def p_comando_outros(p):
                 | bloco'''
     p[0] = p[1]
 
-
-# --- declaração de variáveis (suporta lista: "int i, j;") ---
 
 def p_declaracao_variavel(p):
     'declaracao_variavel : TIPO_VARIAVEL lista_declaradores'
@@ -350,8 +260,6 @@ def p_lista_valores_um(p):
     p[0] = [p[1]]
 
 
-# --- atribuição (com suporte a acesso indexado: matriz[i][j] = x) ---
-
 def p_atribuicao(p):
     'atribuicao : IDENTIFICADOR indices OP_ATRIBUICAO expressao'
     p[0] = ('atribuicao', p[1], p[2], p[4])
@@ -366,8 +274,6 @@ def p_indices_vazia(p):
     'indices : vazio'
     p[0] = []
 
-
-# --- estruturas de controle ---
 
 def p_comando_if(p):
     'comando_if : C_IF ABRE_PARENTESES expressao FECHA_PARENTESES bloco'
@@ -397,8 +303,6 @@ def p_for_init(p):
     p[0] = p[1]
 
 
-# --- chamada de função ---
-
 def p_chamada_funcao(p):
     'chamada_funcao : IDENTIFICADOR ABRE_PARENTESES lista_argumentos FECHA_PARENTESES'
     p[0] = ('chamada', p[1], p[3])
@@ -423,11 +327,6 @@ def p_argumento(p):
     'argumento : expressao'
     p[0] = p[1]
 
-
-# ---------------------------------------------------------------------------
-# 4. EXPRESSÕES (matemáticas e lógicas), por ordem de precedência
-#    ternário > || > && > relacionais > + - > * / > unário/átomo
-# ---------------------------------------------------------------------------
 
 def p_expressao_ternaria(p):
     ('expressao : expressao_ou OP_TERNARIO expressao DOIS_PONTOS '
@@ -537,10 +436,6 @@ def p_fator_mais_unario(p):
     p[0] = ('unario', '+', p[2])
 
 
-# ---------------------------------------------------------------------------
-# 5. AUXILIARES E TRATAMENTO DE ERROS
-# ---------------------------------------------------------------------------
-
 def p_vazio(p):
     'vazio :'
     pass
@@ -557,16 +452,9 @@ def p_error(p):
 
 parser = yacc.yacc()
 
-
-# ---------------------------------------------------------------------------
-# 6. IMPRESSÃO DA AST (para demonstração em sala)
-# ---------------------------------------------------------------------------
-
-# Cores ANSI (desligadas automaticamente se a saída não for um terminal,
-# ex.: ao redirecionar para um arquivo).
 _COR_ATIVA = sys.stdout.isatty()
-_ROTULO = '\033[1;36m' if _COR_ATIVA else ''   # ciano/negrito: nome do nó
-_VALOR = '\033[0;32m' if _COR_ATIVA else ''    # verde: valores (folhas)
+_ROTULO = '\033[1;36m' if _COR_ATIVA else ''
+_VALOR = '\033[0;32m' if _COR_ATIVA else ''
 _RESET = '\033[0m' if _COR_ATIVA else ''
 
 
