@@ -1,0 +1,98 @@
+# ============================================================
+# Gramática SLR(1) — mesma linguagem do LL(1).
+# Aqui a recursão à esquerda é mantida (natural para LR) e não é
+# necessário fatorar. Ambiguidade e precedência continuam resolvidas
+# pelos níveis de não-terminais.
+# ============================================================
+
+programa -> lista_globais
+lista_globais -> lista_globais declaracao_global | declaracao_global
+
+declaracao_global -> diretiva | definicao_struct | definicao_funcao
+
+# ---------- pré-processador ----------
+diretiva -> PRE_PROCESSADOR BIBLIOTECA
+          | PRE_PROCESSADOR IDENTIFICADOR ABRE_PARENTESES parametros_macro FECHA_PARENTESES expressao
+          | PRE_PROCESSADOR IDENTIFICADOR valor_define
+valor_define -> CONSTANTE_INTEIRA | CONSTANTE_FLUTUANTE | STRING
+parametros_macro -> lista_ids | ε
+lista_ids -> lista_ids VIRGULA IDENTIFICADOR | IDENTIFICADOR
+
+# ---------- struct ----------
+definicao_struct -> TYPEDEF STRUCT ABRE_CHAVES lista_campos FECHA_CHAVES IDENTIFICADOR PONTO_VIRGULA
+lista_campos -> lista_campos campo | campo
+campo -> TIPO_VARIAVEL IDENTIFICADOR PONTO_VIRGULA
+
+# ---------- funções e main ----------
+definicao_funcao -> TIPO_VARIAVEL IDENTIFICADOR ABRE_PARENTESES parametros_opt FECHA_PARENTESES bloco
+                  | TIPO_VARIAVEL MAIN ABRE_PARENTESES FECHA_PARENTESES bloco
+parametros_opt -> lista_parametros | ε
+lista_parametros -> lista_parametros VIRGULA parametro | parametro
+parametro -> TIPO_VARIAVEL IDENTIFICADOR dimensoes
+dimensoes -> dimensoes ABRE_COLCHETES CONSTANTE_INTEIRA FECHA_COLCHETES
+           | dimensoes ABRE_COLCHETES FECHA_COLCHETES
+           | ε
+
+# ---------- blocos e comandos ----------
+bloco -> ABRE_CHAVES lista_comandos FECHA_CHAVES
+lista_comandos -> lista_comandos comando | ε
+comando -> declaracao_variavel PONTO_VIRGULA
+         | atribuicao PONTO_VIRGULA
+         | chamada_funcao PONTO_VIRGULA
+         | RETORNO_FUNCAO expressao PONTO_VIRGULA
+         | comando_if
+         | comando_while
+         | comando_for
+         | bloco
+
+# ---------- declaração de variáveis ----------
+declaracao_variavel -> TIPO_VARIAVEL lista_declaradores
+lista_declaradores -> lista_declaradores VIRGULA declarador | declarador
+declarador -> IDENTIFICADOR dimensoes
+            | IDENTIFICADOR dimensoes OP_ATRIBUICAO valor_inicial
+valor_inicial -> expressao
+               | ABRE_CHAVES lista_valores FECHA_CHAVES
+lista_valores -> lista_valores VIRGULA valor_inicial | valor_inicial
+
+# ---------- atribuição e chamada ----------
+atribuicao -> IDENTIFICADOR indices OP_ATRIBUICAO expressao
+indices -> indices ABRE_COLCHETES expressao FECHA_COLCHETES | ε
+chamada_funcao -> IDENTIFICADOR ABRE_PARENTESES argumentos_opt FECHA_PARENTESES
+argumentos_opt -> lista_argumentos | ε
+lista_argumentos -> lista_argumentos VIRGULA expressao | expressao
+
+# ---------- controle de fluxo ----------
+comando_if -> C_IF ABRE_PARENTESES expressao FECHA_PARENTESES bloco
+            | C_IF ABRE_PARENTESES expressao FECHA_PARENTESES bloco C_ELSE bloco
+            | C_IF ABRE_PARENTESES expressao FECHA_PARENTESES bloco C_ELSE comando_if
+comando_while -> P_WHILE ABRE_PARENTESES expressao FECHA_PARENTESES bloco
+comando_for -> P_FOR ABRE_PARENTESES for_init PONTO_VIRGULA expressao PONTO_VIRGULA atribuicao FECHA_PARENTESES bloco
+for_init -> declaracao_variavel | atribuicao
+
+# ---------- expressões ----------
+expressao -> expr_ou OP_TERNARIO expressao DOIS_PONTOS expressao
+           | expr_ou
+expr_ou -> expr_ou OP_OU_LOGICO expr_e | expr_e
+expr_e -> expr_e OP_E_LOGICO expr_igual | expr_igual
+expr_igual -> expr_igual OP_IGUAL expr_rel
+            | expr_igual OP_DIFERENTE expr_rel
+            | expr_rel
+expr_rel -> expr_rel OP_MENOR expr_add
+          | expr_rel OP_MAIOR expr_add
+          | expr_rel OP_MENOR_IGUAL expr_add
+          | expr_rel OP_MAIOR_IGUAL expr_add
+          | expr_add
+expr_add -> expr_add OP_SOMA termo
+          | expr_add OP_SUBTRACAO termo
+          | termo
+termo -> termo OP_MULTIPLICACAO fator
+       | termo OP_DIVISAO fator
+       | fator
+fator -> ABRE_PARENTESES expressao FECHA_PARENTESES
+       | CONSTANTE_INTEIRA
+       | CONSTANTE_FLUTUANTE
+       | STRING
+       | chamada_funcao
+       | IDENTIFICADOR indices
+       | OP_SUBTRACAO fator
+       | OP_SOMA fator

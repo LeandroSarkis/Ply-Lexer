@@ -1,0 +1,106 @@
+# ============================================================
+# Gramática LL(1) — linguagem tipo C (subconjunto)
+# Já sem ambiguidade, com precedência/associatividade,
+# sem recursão à esquerda e fatorada (ver TRANSFORMACAO_GRAMATICA.md).
+# Terminais em MAIÚSCULAS; não-terminais em minúsculas; ε = vazio.
+# ============================================================
+
+programa -> declaracao_global lista_globais
+lista_globais -> declaracao_global lista_globais | ε
+
+declaracao_global -> diretiva | definicao_struct | definicao_funcao
+
+# ---------- pré-processador ----------
+diretiva -> PRE_PROCESSADOR diretiva_resto
+diretiva_resto -> BIBLIOTECA
+                | IDENTIFICADOR define_resto
+define_resto -> ABRE_PARENTESES lista_ids FECHA_PARENTESES expressao
+              | valor_define
+valor_define -> CONSTANTE_INTEIRA | CONSTANTE_FLUTUANTE | STRING
+lista_ids -> IDENTIFICADOR lista_ids' | ε
+lista_ids' -> VIRGULA IDENTIFICADOR lista_ids' | ε
+
+# ---------- struct ----------
+definicao_struct -> TYPEDEF STRUCT ABRE_CHAVES lista_campos FECHA_CHAVES IDENTIFICADOR PONTO_VIRGULA
+lista_campos -> campo lista_campos'
+lista_campos' -> campo lista_campos' | ε
+campo -> TIPO_VARIAVEL IDENTIFICADOR PONTO_VIRGULA
+
+# ---------- funções e main ----------
+definicao_funcao -> TIPO_VARIAVEL funcao_resto
+funcao_resto -> IDENTIFICADOR ABRE_PARENTESES lista_parametros FECHA_PARENTESES bloco
+              | MAIN ABRE_PARENTESES FECHA_PARENTESES bloco
+lista_parametros -> parametro lista_parametros' | ε
+lista_parametros' -> VIRGULA parametro lista_parametros' | ε
+parametro -> TIPO_VARIAVEL IDENTIFICADOR dimensoes
+dimensoes -> ABRE_COLCHETES dimensao_resto dimensoes | ε
+dimensao_resto -> CONSTANTE_INTEIRA FECHA_COLCHETES | FECHA_COLCHETES
+
+# ---------- blocos e comandos ----------
+bloco -> ABRE_CHAVES lista_comandos FECHA_CHAVES
+lista_comandos -> comando lista_comandos | ε
+comando -> declaracao_variavel PONTO_VIRGULA
+         | IDENTIFICADOR comando_id PONTO_VIRGULA
+         | RETORNO_FUNCAO expressao PONTO_VIRGULA
+         | comando_if
+         | comando_while
+         | comando_for
+         | bloco
+comando_id -> atribuicao_resto
+            | ABRE_PARENTESES lista_argumentos FECHA_PARENTESES
+
+# ---------- declaração de variáveis ----------
+declaracao_variavel -> TIPO_VARIAVEL lista_declaradores
+lista_declaradores -> declarador lista_declaradores'
+lista_declaradores' -> VIRGULA declarador lista_declaradores' | ε
+declarador -> IDENTIFICADOR dimensoes declarador_init
+declarador_init -> OP_ATRIBUICAO valor_inicial | ε
+valor_inicial -> expressao
+               | ABRE_CHAVES lista_valores FECHA_CHAVES
+lista_valores -> valor_inicial lista_valores'
+lista_valores' -> VIRGULA valor_inicial lista_valores' | ε
+
+# ---------- atribuição ----------
+atribuicao -> IDENTIFICADOR atribuicao_resto
+atribuicao_resto -> indices OP_ATRIBUICAO expressao
+indices -> ABRE_COLCHETES expressao FECHA_COLCHETES indices | ε
+
+# ---------- controle de fluxo ----------
+comando_if -> C_IF ABRE_PARENTESES expressao FECHA_PARENTESES bloco else_opcional
+else_opcional -> C_ELSE else_corpo | ε
+else_corpo -> bloco | comando_if
+comando_while -> P_WHILE ABRE_PARENTESES expressao FECHA_PARENTESES bloco
+comando_for -> P_FOR ABRE_PARENTESES for_init PONTO_VIRGULA expressao PONTO_VIRGULA atribuicao FECHA_PARENTESES bloco
+for_init -> declaracao_variavel | atribuicao
+
+# ---------- expressões (precedência: menor -> maior) ----------
+# ?:  <  ||  <  &&  <  == !=  <  < > <= >=  <  + -  <  * /  <  unário  <  primário
+expressao -> expr_ou expressao_t
+expressao_t -> OP_TERNARIO expressao DOIS_PONTOS expressao | ε
+expr_ou -> expr_e expr_ou'
+expr_ou' -> OP_OU_LOGICO expr_e expr_ou' | ε
+expr_e -> expr_igual expr_e'
+expr_e' -> OP_E_LOGICO expr_igual expr_e' | ε
+expr_igual -> expr_rel expr_igual'
+expr_igual' -> op_igual expr_rel expr_igual' | ε
+op_igual -> OP_IGUAL | OP_DIFERENTE
+expr_rel -> expr_add expr_rel'
+expr_rel' -> op_rel expr_add expr_rel' | ε
+op_rel -> OP_MENOR | OP_MAIOR | OP_MENOR_IGUAL | OP_MAIOR_IGUAL
+expr_add -> termo expr_add'
+expr_add' -> op_add termo expr_add' | ε
+op_add -> OP_SOMA | OP_SUBTRACAO
+termo -> fator termo'
+termo' -> op_mul fator termo' | ε
+op_mul -> OP_MULTIPLICACAO | OP_DIVISAO
+fator -> ABRE_PARENTESES expressao FECHA_PARENTESES
+       | CONSTANTE_INTEIRA
+       | CONSTANTE_FLUTUANTE
+       | STRING
+       | IDENTIFICADOR fator_id
+       | OP_SUBTRACAO fator
+       | OP_SOMA fator
+fator_id -> ABRE_PARENTESES lista_argumentos FECHA_PARENTESES
+          | indices
+lista_argumentos -> expressao lista_argumentos' | ε
+lista_argumentos' -> VIRGULA expressao lista_argumentos' | ε
